@@ -9,6 +9,17 @@ esp32-firmware/.pio/
 esp32-firmware/.vscode/
 esp32-firmware/*.bin
 
+# KiCad
+hardware/*.kicad_prl
+hardware/*.kicad_pro-bak
+hardware/*.bak
+hardware/*.tmp
+hardware/*.000
+hardware/*.001
+hardware/*.dsn
+hardware/*.ses
+hardware/*-backups/
+
 # System
 .DS_Store
 Thumbs.db
