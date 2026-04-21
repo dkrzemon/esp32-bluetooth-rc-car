@@ -19,6 +19,7 @@ hardware/*.001
 hardware/*.dsn
 hardware/*.ses
 hardware/*-backups/
+hardware/.history/
 
 # System
 .DS_Store
