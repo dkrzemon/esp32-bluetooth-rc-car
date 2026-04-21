@@ -1,0 +1,14 @@
+# Flutter
+flutter-app/build/
+flutter-app/.dart_tool/
+flutter-app/.packages
+flutter-app/.idea/
+
+# ESP32 / PlatformIO / Arduino
+esp32-firmware/.pio/
+esp32-firmware/.vscode/
+esp32-firmware/*.bin
+
+# System
+.DS_Store
+Thumbs.db
