@@ -10,16 +10,16 @@ esp32-firmware/.vscode/
 esp32-firmware/*.bin
 
 # KiCad
-hardware/*.kicad_prl
-hardware/*.kicad_pro-bak
-hardware/*.bak
-hardware/*.tmp
-hardware/*.000
-hardware/*.001
-hardware/*.dsn
-hardware/*.ses
-hardware/*-backups/
-hardware/.history/
+hardware/esp32-bluetooth-rc-car-hardware/*.kicad_prl
+hardware/esp32-bluetooth-rc-car-hardware/*.kicad_pro-bak
+hardware/esp32-bluetooth-rc-car-hardware/*.bak
+hardware/esp32-bluetooth-rc-car-hardware/*.tmp
+hardware/esp32-bluetooth-rc-car-hardware/*.000
+hardware/esp32-bluetooth-rc-car-hardware/*.001
+hardware/esp32-bluetooth-rc-car-hardware/*.dsn
+hardware/esp32-bluetooth-rc-car-hardware/*.ses
+hardware/esp32-bluetooth-rc-car-hardware/*-backups/
+hardware/esp32-bluetooth-rc-car-hardware/.history/
 
 # System
 .DS_Store
