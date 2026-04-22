@@ -20,6 +20,7 @@ esp32-bluetooth-rc-car/esp32-firmware/*.bin
 *.ses
 *-backups/
 .history/
+*.lck
 
 # System
 .DS_Store
