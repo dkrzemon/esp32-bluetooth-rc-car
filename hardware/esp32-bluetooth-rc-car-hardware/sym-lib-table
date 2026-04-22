@@ -2,4 +2,5 @@
 	(version 7)
 	(lib (name "ESP32_devkit_v1") (type "KiCad") (uri "${KIPRJMOD}/libraries/ESP32_devkit_v1.kicad_sym") (options "") (descr ""))
 	(lib (name "h_bridge_steering_car") (type "KiCad") (uri "${KIPRJMOD}/libraries/h_bridge_steering_car.kicad_sym") (options "") (descr ""))
+	(lib (name "buck_converter") (type "KiCad") (uri "C:/Users/Dawid/Documents/PROGRAMMING/KiCad_projects/mini_car/mini_car/libraries/buck_converter.kicad_sym") (options "") (descr ""))
 )
