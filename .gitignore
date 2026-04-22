@@ -12,7 +12,7 @@ esp32-bluetooth-rc-car/esp32-firmware/*.bin
 # KiCad
 *.kicad_prl
 *.kicad_pro-bak
-libraries/*.bak
+*.bak
 *.tmp
 *.000
 *.001
