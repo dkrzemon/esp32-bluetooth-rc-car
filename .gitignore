@@ -1,25 +1,25 @@
 # Flutter
-flutter-app/build/
-flutter-app/.dart_tool/
-flutter-app/.packages
-flutter-app/.idea/
+esp32-bluetooth-rc-car/flutter-app/build/
+esp32-bluetooth-rc-car/flutter-app/.dart_tool/
+esp32-bluetooth-rc-car/flutter-app/.packages
+esp32-bluetooth-rc-car/flutter-app/.idea/
 
 # ESP32 / PlatformIO / Arduino
-esp32-firmware/.pio/
-esp32-firmware/.vscode/
-esp32-firmware/*.bin
+esp32-bluetooth-rc-car/esp32-firmware/.pio/
+esp32-bluetooth-rc-car/esp32-firmware/.vscode/
+esp32-bluetooth-rc-car/esp32-firmware/*.bin
 
 # KiCad
-hardware/esp32-bluetooth-rc-car-hardware/*.kicad_prl
-hardware/esp32-bluetooth-rc-car-hardware/*.kicad_pro-bak
-hardware/esp32-bluetooth-rc-car-hardware/libraries/*.bak
-hardware/esp32-bluetooth-rc-car-hardware/*.tmp
-hardware/esp32-bluetooth-rc-car-hardware/*.000
-hardware/esp32-bluetooth-rc-car-hardware/*.001
-hardware/esp32-bluetooth-rc-car-hardware/*.dsn
-hardware/esp32-bluetooth-rc-car-hardware/*.ses
-hardware/esp32-bluetooth-rc-car-hardware/*-backups/
-hardware/esp32-bluetooth-rc-car-hardware/.history/
+*.kicad_prl
+*.kicad_pro-bak
+libraries/*.bak
+*.tmp
+*.000
+*.001
+*.dsn
+*.ses
+*-backups/
+.history/
 
 # System
 .DS_Store
