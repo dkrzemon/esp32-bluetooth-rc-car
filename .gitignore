@@ -12,7 +12,7 @@ esp32-firmware/*.bin
 # KiCad
 hardware/esp32-bluetooth-rc-car-hardware/*.kicad_prl
 hardware/esp32-bluetooth-rc-car-hardware/*.kicad_pro-bak
-hardware/esp32-bluetooth-rc-car-hardware/*.bak
+hardware/esp32-bluetooth-rc-car-hardware/libraries/*.bak
 hardware/esp32-bluetooth-rc-car-hardware/*.tmp
 hardware/esp32-bluetooth-rc-car-hardware/*.000
 hardware/esp32-bluetooth-rc-car-hardware/*.001
