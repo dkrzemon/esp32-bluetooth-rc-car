@@ -1,13 +1,15 @@
 # Flutter
-esp32-bluetooth-rc-car/flutter-app/build/
-esp32-bluetooth-rc-car/flutter-app/.dart_tool/
-esp32-bluetooth-rc-car/flutter-app/.packages
-esp32-bluetooth-rc-car/flutter-app/.idea/
+flutter-app/build/
+flutter-app/.dart_tool/
+flutter-app/.packages
+flutter-app/.idea/
 
 # ESP32 / PlatformIO / Arduino
-esp32-bluetooth-rc-car/esp32-firmware/.pio/
-esp32-bluetooth-rc-car/esp32-firmware/.vscode/
-esp32-bluetooth-rc-car/esp32-firmware/*.bin
+esp32-firmware/.vscode/
+esp32-firmware/*.bin
+.pio
+.vscode/ipch
+
 
 # KiCad
 *.kicad_prl
