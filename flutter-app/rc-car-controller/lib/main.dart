@@ -30,13 +30,24 @@ class _HomePageState extends State<HomePage> {
   BluetoothDevice? device;
   BluetoothCharacteristic? characteristic;
 
-  final String deviceName = "RC_CAR";
+  bool isScanning = false;
+  bool isConnected = false;
 
-  final Guid serviceUUID = Guid("12345678-1234-1234-1234-1234567890ab");
-  final Guid charUUID = Guid("abcd1234-5678-1234-5678-abcdef123456");
+  Timer? heartbeatTimer;
+
+  // 🔥 AUTO RECONNECT
+  Timer? reconnectTimer;
+  bool isReconnecting = false;
+
+  final String deviceName = "RC_CAR";
+  final Guid serviceUUID =
+      Guid("12345678-1234-1234-1234-123456789abc");
+
+  final Guid charUUID =
+      Guid("12345678-1234-1234-1234-123456789abd");
 
   StreamSubscription<List<ScanResult>>? scanSub;
-  bool isScanning = false;
+  StreamSubscription<BluetoothConnectionState>? stateSub;
 
   @override
   void initState() {
@@ -46,24 +57,133 @@ class _HomePageState extends State<HomePage> {
       for (var r in results) {
         final name = r.device.platformName;
 
-        print("DEVICE: $name RSSI: ${r.rssi}");
-
         if (name == deviceName && r.rssi > -90) {
-          print("FOUND RC_CAR");
-
           await FlutterBluePlus.stopScan();
 
           device = r.device;
 
           try {
-            await device!.connect(timeout: const Duration(seconds: 10));
+            await device!.connect(
+              timeout: const Duration(seconds: 10),
+            );
           } catch (_) {}
 
+          await stateSub?.cancel();
+
+          stateSub = device!.connectionState.listen((state) {
+            if (state == BluetoothConnectionState.connected) {
+              setState(() => isConnected = true);
+              print("🟢 CONNECTED");
+            }
+
+            if (state == BluetoothConnectionState.disconnected) {
+              print("🔴 DISCONNECTED");
+
+              setState(() {
+                isConnected = false;
+                device = null;
+                characteristic = null;
+              });
+
+              heartbeatTimer?.cancel();
+
+              startReconnect(); // 🔥 AUTO RECONNECT
+            }
+          });
+
           await discoverServices();
+          startHeartbeat();
 
           setState(() {});
           return;
         }
+      }
+    });
+  }
+
+  // 🔥 HEARTBEAT
+  void startHeartbeat() {
+    heartbeatTimer?.cancel();
+
+    heartbeatTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      if (characteristic == null) return;
+      if (!isConnected) return;
+
+      try {
+        await characteristic!.write(
+          "H".codeUnits,
+          withoutResponse: false,
+        );
+      } catch (e) {
+        print("HEARTBEAT ERROR: $e");
+      }
+    });
+  }
+
+  // 🔥 AUTO RECONNECT
+  void startReconnect() {
+    if (isReconnecting) return;
+
+    isReconnecting = true;
+
+    reconnectTimer?.cancel();
+
+    reconnectTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      print("🔄 RECONNECT TRY...");
+
+      try {
+        await FlutterBluePlus.stopScan();
+
+        await FlutterBluePlus.startScan(
+          timeout: const Duration(seconds: 3),
+        );
+
+        FlutterBluePlus.scanResults.listen((results) async {
+          for (var r in results) {
+            if (r.device.platformName == deviceName) {
+              print("♻️ FOUND RC_CAR AGAIN");
+
+              await FlutterBluePlus.stopScan();
+
+              reconnectTimer?.cancel();
+              isReconnecting = false;
+
+              device = r.device;
+
+              try {
+                await device!.connect(
+                  timeout: const Duration(seconds: 10),
+                );
+              } catch (_) {}
+
+              await stateSub?.cancel();
+
+              stateSub = device!.connectionState.listen((state) {
+                if (state == BluetoothConnectionState.connected) {
+                  setState(() => isConnected = true);
+                }
+
+                if (state == BluetoothConnectionState.disconnected) {
+                  setState(() {
+                    isConnected = false;
+                    device = null;
+                    characteristic = null;
+                  });
+
+                  startReconnect();
+                }
+              });
+
+              await discoverServices();
+              startHeartbeat();
+
+              setState(() {});
+              return;
+            }
+          }
+        });
+      } catch (e) {
+        print("RECONNECT ERROR: $e");
       }
     });
   }
@@ -94,47 +214,48 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> discoverServices() async {
-  if (device == null) return;
+    if (device == null) return;
 
-  print("=== SERVICES ===");
+    print("=== SERVICES ===");
 
-  List<BluetoothService> services = await device!.discoverServices();
+    final services = await device!.discoverServices();
 
-  for (var s in services) {
-    print("SERVICE: ${s.uuid}");
-
-    for (var c in s.characteristics) {
-      print("  CHAR: ${c.uuid}");
-
-      // 🔥 USUŃ porównanie — bierzemy pierwszą lepszą
-      characteristic = c;
+    for (var s in services) {
+      for (var c in s.characteristics) {
+        if (c.uuid == charUUID) {
+          characteristic = c;
+          print("✅ CHARACTERISTIC FOUND");
+        }
+      }
     }
-  }
 
-  if (characteristic == null) {
-    print("❌ NIC NIE ZNALEZIONO");
-  } else {
-    print("✅ MAM CHARACTERISTIC");
-  }
-}
-
-  void sendCommand(String cmd) async {
     if (characteristic == null) {
-      print("❌ BRAK CHARACTERISTIC");
+      print("❌ CHARACTERISTIC NOT FOUND");
       return;
     }
 
-    print("📤 WYSYŁAM: $cmd");
+    setState(() {
+      isConnected = true;
+    });
+
+    print("🟢 CONNECTED + HEARTBEAT STARTED");
+  }
+
+  void sendCommand(String cmd) async {
+    if (characteristic == null) return;
 
     await characteristic!.write(
       cmd.codeUnits,
-      withoutResponse: false, // 🔥 PEWNIEJSZE
+      withoutResponse: false,
     );
   }
 
   @override
   void dispose() {
     scanSub?.cancel();
+    stateSub?.cancel();
+    heartbeatTimer?.cancel();
+    reconnectTimer?.cancel();
     super.dispose();
   }
 
@@ -146,11 +267,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              device == null
-                  ? "Not connected"
-                  : "Connected to RC_CAR",
-            ),
+            Text(isConnected ? "Connected" : "Not connected"),
 
             const SizedBox(height: 20),
 
@@ -165,22 +282,18 @@ class _HomePageState extends State<HomePage> {
               onPressed: () => sendCommand("F"),
               child: const Text("Forward"),
             ),
-
             ElevatedButton(
               onPressed: () => sendCommand("B"),
               child: const Text("Back"),
             ),
-
             ElevatedButton(
               onPressed: () => sendCommand("L"),
               child: const Text("Left"),
             ),
-
             ElevatedButton(
               onPressed: () => sendCommand("R"),
               child: const Text("Right"),
             ),
-
             ElevatedButton(
               onPressed: () => sendCommand("S"),
               child: const Text("Stop"),
