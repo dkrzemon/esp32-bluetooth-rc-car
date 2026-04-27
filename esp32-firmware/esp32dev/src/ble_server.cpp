@@ -1,6 +1,8 @@
 #include "ble_server.h"
 #include <Arduino.h>
 
+#include "motor.h"
+
 #define SERVICE_UUID        "12345678-1234-1234-1234-1234abcd5678"
 #define CHARACTERISTIC_UUID "abcd1234-5678-1234-5678-abcdef123456"
 
@@ -66,11 +68,26 @@ class MyCallbacks : public BLECharacteristicCallbacks {
         Serial.print("CMD: ");
         Serial.println(cmd);
 
-        if (cmd == "F") Serial.println("FORWARD");
-        else if (cmd == "B") Serial.println("BACK");
-        else if (cmd == "L") Serial.println("LEFT");
-        else if (cmd == "R") Serial.println("RIGHT");
-        else if (cmd == "S") Serial.println("STOP");
+        if (cmd == "F"){
+            Serial.println("FORWARD");
+            forward();
+        } 
+        else if (cmd == "B") {
+            Serial.println("BACK");
+            // backward();
+        }
+        else if (cmd == "L") {
+            Serial.println("LEFT");
+            // turnLeft();
+        }
+        else if (cmd == "R") {
+            Serial.println("RIGHT");
+            // turnRight();
+        }
+        else if (cmd == "S") {
+            Serial.println("STOP");
+            stopMotors();
+        }
     }
 };
 
