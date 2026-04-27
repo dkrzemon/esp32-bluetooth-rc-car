@@ -166,8 +166,8 @@
 					)
 				)
 			)
-			(text "bidirectional,flash*"
-				(at -10.414 -12.7 0)
+			(text "bidirectional,strap pin*"
+				(at -9.398 -12.7 0)
 				(effects
 					(font
 						(size 0.6858 0.6858)
@@ -198,6 +198,22 @@
 					)
 				)
 			)
+			(text "bidirectional,TX0,serial monitor out"
+				(at 4.826 10.16 0)
+				(effects
+					(font
+						(size 0.6858 0.6858)
+					)
+				)
+			)
+			(text "bidirectional,RX0,serial monitor in"
+				(at 5.08 7.62 0)
+				(effects
+					(font
+						(size 0.6858 0.6858)
+					)
+				)
+			)
 			(text "bidirectional, default for I2C (SDA)"
 				(at 5.08 5.08 0)
 				(effects
@@ -214,7 +230,7 @@
 					)
 				)
 			)
-			(text "bidirectional, LED in controller"
+			(text "bidirectional, LED in controller,\nboot"
 				(at 6.35 -12.7 0)
 				(effects
 					(font
@@ -238,16 +254,8 @@
 					)
 				)
 			)
-			(text "bidirectional,TX0"
-				(at 9.652 10.16 0)
-				(effects
-					(font
-						(size 0.6858 0.6858)
-					)
-				)
-			)
-			(text "bidirectional,RX0"
-				(at 9.652 7.62 0)
+			(text "bidirectional,boot\n"
+				(at 9.906 -15.24 0)
 				(effects
 					(font
 						(size 0.6858 0.6858)
@@ -288,14 +296,6 @@
 			)
 			(text "bidirectional\n"
 				(at 11.176 -10.16 0)
-				(effects
-					(font
-						(size 0.6858 0.6858)
-					)
-				)
-			)
-			(text "bidirectional\n"
-				(at 11.176 -15.24 0)
 				(effects
 					(font
 						(size 0.6858 0.6858)
