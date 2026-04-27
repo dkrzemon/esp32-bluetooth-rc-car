@@ -8,8 +8,8 @@
 #define PWMA 33
 
 // right wheel
-#define BIN1 3
-#define BIN2 1
+#define BIN1 25
+#define BIN2 26
 #define PWMB 27
 
 #define PWM_CHANNEL_A 0
