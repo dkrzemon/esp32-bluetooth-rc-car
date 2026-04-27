@@ -41,20 +41,19 @@ class ServerCallbacks : public BLEServerCallbacks {
 // =====================
 class MyCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *characteristic) override {
-
-        std::string value = characteristic->getValue();
-        if (value.length() == 0) return;
-
-        // 🔥 SAFE PARSING (NO GARBAGE / NO CRASH / NO "����T")
-        String cmd = "";
-        for (int i = 0; i < value.length(); i++) {
-            cmd += value[i];
-        }
-
+        
+        std::string raw = characteristic->getValue();
+        if (raw.empty()) return;
+        
+        // 🔥 bezpieczne kopiowanie
+        String cmd = String(raw.data(), raw.length());
         cmd.trim();
-
+        
+        // 🔥 ignoruj śmieci (np. dziwne znaki)
+        if (cmd.length() == 0 || cmd.length() > 10) return;
+        
         // =====================
-        // 🔥 HEARTBEAT
+        // 💓 HEARTBEAT
         // =====================
         if (cmd == "H") {
             lastHeartbeat = millis();
@@ -63,31 +62,49 @@ class MyCallbacks : public BLECharacteristicCallbacks {
         }
 
         // =====================
-        // 🔥 DEBUG COMMAND
+        // 🚗 SPEED (V0–V100)
         // =====================
-        Serial.print("CMD: ");
-        Serial.println(cmd);
+        if (cmd.startsWith("V")) {
+        
+            // 🔥 sprawdź czy reszta to liczba
+            String numStr = cmd.substring(1);
+        
+            for (int i = 0; i < numStr.length(); i++) {
+                if (!isDigit(numStr[i])) {
+                    Serial.println("❌ INVALID SPEED DATA");
+                    return;
+                }
+            }
+        
+            int value = numStr.toInt();
+        
+            // 🔥 zakres bezpieczeństwa
+            if (value < 0 || value > 100) {
+                Serial.println("❌ SPEED OUT OF RANGE");
+                return;
+            }
+        
+            Serial.print("SPEED: ");
+            Serial.println(value);
+        
+            setSpeed(value);
+            return;
+        }
 
-        if (cmd == "F"){
-            Serial.println("FORWARD");
-            forward();
-        } 
-        else if (cmd == "B") {
-            Serial.println("BACK");
-            // backward();
-        }
-        else if (cmd == "L") {
-            Serial.println("LEFT");
-            // turnLeft();
-        }
-        else if (cmd == "R") {
-            Serial.println("RIGHT");
-            // turnRight();
-        }
-        else if (cmd == "S") {
-            Serial.println("STOP");
+        // =====================
+        // 🛑 STOP
+        // =====================
+        if (cmd == "S") {
             stopMotors();
+            Serial.println("STOP");
+            return;
         }
+
+        // =====================
+        // ❌ NIEZNANA KOMENDA
+        // =====================
+        Serial.print("❌ UNKNOWN CMD: ");
+        Serial.println(cmd);
     }
 };
 

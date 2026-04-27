@@ -27,6 +27,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final BleService ble = BleService();
 
+  double speed = 0; // 0–100
+
   @override
   void initState() {
     super.initState();
@@ -36,7 +38,7 @@ class _HomePageState extends State<HomePage> {
     });
 
     Future.delayed(const Duration(milliseconds: 500), () {
-      ble.scanAndConnect(); // 🔥 FIX: NIE "scan()", tylko poprawna metoda
+      ble.scanAndConnect();
     });
   }
 
@@ -44,6 +46,15 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     ble.dispose();
     super.dispose();
+  }
+
+  void sendSpeed(double value) {
+    int v = value.toInt();
+
+    // 🔥 ograniczenie spamowania BLE (wysyła co 5%)
+    if (v % 5 == 0) {
+      ble.sendCommand("V$v");
+    }
   }
 
   @override
@@ -54,28 +65,42 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(ble.isConnected ? "Connected" : "Not connected"),
+            Text(
+              ble.isConnected ? "Connected" : "Not connected",
+              style: const TextStyle(fontSize: 18),
+            ),
+
+            const SizedBox(height: 30),
+
+            Text(
+              "Speed: ${speed.toInt()}%",
+              style: const TextStyle(fontSize: 20),
+            ),
+
+            Slider(
+              value: speed,
+              min: 0,
+              max: 100,
+              divisions: 100,
+
+              onChanged: (value) {
+                setState(() {
+                  speed = value;
+                });
+
+                sendSpeed(value);
+              },
+            ),
+
             const SizedBox(height: 20),
 
             ElevatedButton(
-              onPressed: () => ble.sendCommand("F"),
-              child: const Text("Forward"),
-            ),
-            ElevatedButton(
-              onPressed: () => ble.sendCommand("B"),
-              child: const Text("Back"),
-            ),
-            ElevatedButton(
-              onPressed: () => ble.sendCommand("L"),
-              child: const Text("Left"),
-            ),
-            ElevatedButton(
-              onPressed: () => ble.sendCommand("R"),
-              child: const Text("Right"),
-            ),
-            ElevatedButton(
-              onPressed: () => ble.sendCommand("S"),
-              child: const Text("Stop"),
+              onPressed: () {
+                speed = 0;
+                setState(() {});
+                ble.sendCommand("S");
+              },
+              child: const Text("STOP"),
             ),
           ],
         ),
