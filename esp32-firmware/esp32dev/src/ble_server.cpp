@@ -35,23 +35,34 @@ class ServerCallbacks : public BLEServerCallbacks {
 };
 
 // =====================
-// 🔥 CHARACTERISTIC CALLBACKS
+// 🔥 CHARACTERISTIC CALLBACKS (FIXED)
 // =====================
 class MyCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *characteristic) override {
-        std::string value = characteristic->getValue();
 
+        std::string value = characteristic->getValue();
         if (value.length() == 0) return;
 
-        String cmd = String(value.c_str());
+        // 🔥 SAFE PARSING (NO GARBAGE / NO CRASH / NO "����T")
+        String cmd = "";
+        for (int i = 0; i < value.length(); i++) {
+            cmd += value[i];
+        }
 
+        cmd.trim();
+
+        // =====================
         // 🔥 HEARTBEAT
+        // =====================
         if (cmd == "H") {
             lastHeartbeat = millis();
             Serial.println("💓 HEARTBEAT");
             return;
         }
 
+        // =====================
+        // 🔥 DEBUG COMMAND
+        // =====================
         Serial.print("CMD: ");
         Serial.println(cmd);
 
@@ -101,13 +112,12 @@ void BLEManager::begin() {
 // =====================
 void BLEManager::loop() {
 
-    // jeśli nie ma połączenia → nic nie rób
     if (!deviceConnected) {
         delay(200);
         return;
     }
 
-    // 🔥 grace period (5 sekund po connect)
+    // 🔥 grace period (po connect)
     if (millis() - connectTime < 5000) {
         return;
     }
@@ -116,10 +126,7 @@ void BLEManager::loop() {
     if (millis() - lastHeartbeat > 3000) {
         Serial.println("💀 HEARTBEAT LOST → FORCE DISCONNECT");
 
-        // 🔥 PRAWDZIWY DISCONNECT BLE
         pServer->disconnect(pServer->getConnId());
-
-        // dalsze rzeczy zrobi onDisconnect()
     }
 
     delay(200);

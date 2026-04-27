@@ -34,6 +34,10 @@ class _HomePageState extends State<HomePage> {
     ble.init(() {
       setState(() {});
     });
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      ble.scanAndConnect(); // 🔥 FIX: NIE "scan()", tylko poprawna metoda
+    });
   }
 
   @override
@@ -50,17 +54,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              ble.isConnected ? "Connected" : "Not connected",
-            ),
-
-            const SizedBox(height: 20),
-
-            ElevatedButton(
-              onPressed: ble.scanAndConnect,
-              child: const Text("Scan & Connect"),
-            ),
-
+            Text(ble.isConnected ? "Connected" : "Not connected"),
             const SizedBox(height: 20),
 
             ElevatedButton(

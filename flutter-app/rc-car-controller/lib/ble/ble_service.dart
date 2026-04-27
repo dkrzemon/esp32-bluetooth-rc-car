@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -8,28 +8,41 @@ class BleService {
   BluetoothCharacteristic? characteristic;
 
   bool isConnected = false;
+  bool isScanning = false;
+  bool isReconnecting = false;
+  bool isBusy = false;
+  bool isConnecting = false;
+
+  Timer? heartbeatTimer;
+  Timer? reconnectTimer;
 
   final String deviceName = "RC_CAR";
 
-  final Guid serviceUUID =
-    Guid("12345678-1234-1234-1234-123456789abc");
-
   final Guid charUUID =
-    Guid("12345678-1234-1234-1234-123456789abd");
+      Guid("12345678-1234-1234-1234-123456789abd");
 
   StreamSubscription<List<ScanResult>>? scanSub;
   StreamSubscription<BluetoothConnectionState>? stateSub;
 
-  Timer? heartbeatTimer;
+  late VoidCallback onUpdate;
 
-  // 🔥 INIT (start listener)
-  void init(VoidCallback onUpdate) {
-  scanSub = FlutterBluePlus.scanResults.listen((results) async {
-    for (var r in results) {
-      final name = r.device.platformName;
+  // ================= INIT =================
+  void init(VoidCallback update) {
+    onUpdate = update;
 
-      if (name == deviceName && r.rssi > -90) {
+    scanSub = FlutterBluePlus.scanResults.listen((results) async {
+      if (isBusy || isConnecting) return;
+
+      for (var r in results) {
+        if (r.device.platformName != deviceName) continue;
+
+        print("📡 FOUND RC_CAR");
+
+        isBusy = true;
+        isConnecting = true;
+
         await FlutterBluePlus.stopScan();
+        isScanning = false;
 
         device = r.device;
 
@@ -40,116 +53,167 @@ class BleService {
         await stateSub?.cancel();
 
         stateSub = device!.connectionState.listen((state) async {
+
           if (state == BluetoothConnectionState.connected) {
+            if (isConnected) return;
+
             print("🟢 CONNECTED");
 
-            await discoverServices();
-
-            if (characteristic != null) {
-              isConnected = true;
-              startHeartbeat();
-
-              print("✅ READY (CHAR + HEARTBEAT)");
-            } else {
-              print("❌ NO CHARACTERISTIC");
-            }
-
+            isConnected = true;
+            isConnecting = false;
             onUpdate();
+
+            await Future.delayed(const Duration(milliseconds: 1200));
+
+            await _discover();
+
+            startHeartbeat();
+            stopReconnect();
+
+            isBusy = false;
+
+            print("✅ READY");
           }
 
           if (state == BluetoothConnectionState.disconnected) {
+            if (!isConnected) return;
+
             print("🔴 DISCONNECTED");
 
             isConnected = false;
+            isConnecting = false;
+
             device = null;
             characteristic = null;
 
             heartbeatTimer?.cancel();
 
             onUpdate();
+
+            isBusy = false;
+
+            Future.delayed(const Duration(seconds: 2), () {
+              startReconnect();
+            });
           }
         });
 
         return;
       }
-    }
-  });
-}
+    });
 
-  // 🔥 PERMISSIONS
-  Future<void> requestPermissions() async {
+    startReconnect();
+  }
+
+  // ================= DISCOVER =================
+  Future<void> _discover() async {
+    if (device == null) return;
+
+    print("=== DISCOVER ===");
+
+    try {
+      final services = await device!.discoverServices();
+
+      for (var s in services) {
+        for (var c in s.characteristics) {
+          if (c.uuid == charUUID) {
+            characteristic = c;
+            print("✅ CHARACTERISTIC FOUND");
+          }
+        }
+      }
+    } catch (e) {
+      print("DISCOVER ERROR: $e");
+    }
+  }
+
+  // ================= RECONNECT =================
+  void startReconnect() {
+    if (isReconnecting) return;
+
+    isReconnecting = true;
+
+    reconnectTimer?.cancel();
+
+    reconnectTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) async {
+
+        if (isConnected || isBusy || isConnecting) return;
+
+        final state = await FlutterBluePlus.adapterState.first;
+        if (state != BluetoothAdapterState.on) return;
+
+        print("🔁 RECONNECT SCAN...");
+        await scanAndConnect();
+      },
+    );
+  }
+
+  void stopReconnect() {
+    reconnectTimer?.cancel();
+    isReconnecting = false;
+  }
+
+  // ================= SCAN =================
+  Future<void> scanAndConnect() async {
+    if (isScanning) return;
+
+    isScanning = true;
+
     await [
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
       Permission.location,
     ].request();
-  }
 
-  // 🔥 SCAN
-  Future<void> scanAndConnect() async {
-    await requestPermissions();
-
-    await FlutterBluePlus.stopScan();
-
-    await FlutterBluePlus.startScan(
-      timeout: const Duration(seconds: 5),
-    );
-  }
-
-  // 🔥 DISCOVER
-  Future<void> discoverServices() async {
-    if (device == null) return;
-
-    final services = await device!.discoverServices();
-
-    for (var s in services) {
-    if (s.uuid == serviceUUID) {
-        for (var c in s.characteristics) {
-        if (c.uuid == charUUID) {
-            characteristic = c;
-        }
-        }
-    }
+    try {
+      await FlutterBluePlus.stopScan();
+      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+    } catch (e) {
+      print("SCAN ERROR: $e");
     }
 
-    if (characteristic != null) {
-    print("✅ CHARACTERISTIC FOUND");
-    } else {
-    print("❌ CHARACTERISTIC NOT FOUND");
-    }
-  }
-
-  // 🔥 HEARTBEAT
-  void startHeartbeat() {
-    heartbeatTimer?.cancel();
-
-    heartbeatTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
-      if (characteristic == null) return;
-      if (!isConnected) return;
-
-      try {
-        await characteristic!.write(
-          "H".codeUnits,
-          withoutResponse: false,
-        );
-      } catch (_) {}
+    Future.delayed(const Duration(seconds: 5), () {
+      isScanning = false;
     });
   }
 
-  // 🔥 COMMAND
-  Future<void> sendCommand(String cmd) async {
-    if (characteristic == null) return;
+  // ================= HEARTBEAT =================
+  void startHeartbeat() {
+    heartbeatTimer?.cancel();
 
-    await characteristic!.write(
-      cmd.codeUnits,
-      withoutResponse: false,
+    heartbeatTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) async {
+
+        if (!isConnected || characteristic == null) return;
+
+        try {
+          await characteristic!.write("H".codeUnits);
+        } catch (e) {
+          print("HEARTBEAT ERROR: $e");
+        }
+      },
     );
   }
 
-  // 🔥 CLEANUP
+  // ================= SEND =================
+  Future<void> sendCommand(String cmd) async {
+    if (characteristic == null) return;
+
+    try {
+      await characteristic!.write(cmd.codeUnits);
+    } catch (e) {
+      print("SEND ERROR: $e");
+    }
+  }
+
+  // ================= DISPOSE =================
   void dispose() {
     scanSub?.cancel();
     stateSub?.cancel();
     heartbeatTimer?.cancel();
+    reconnectTimer?.cancel();
   }
 }
