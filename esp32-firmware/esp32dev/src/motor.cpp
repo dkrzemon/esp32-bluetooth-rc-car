@@ -13,9 +13,11 @@
 #define PWMB 27
 
 #define PWM_CHANNEL_A 0
-#define PWM_CHANNEL_B 0
-#define PWM_FREQ 20000 // frequency for PWM, you can adjust this value based on your needs
+#define PWM_CHANNEL_B 1
+#define PWM_FREQ 15000 // frequency for PWM, you can adjust this value based on your needs
 #define PWM_RES 10 // 10-bit resolution: duty cycle can be from 0 to 1023
+
+#define DEADZONE 3
 
 static bool motorInitDone = false;
 
@@ -33,7 +35,7 @@ void setupMotors() {
 
     motorInitDone = true;
 
-    stopMotors();
+    stopMotors(0);
 
     Serial.println("MOTORS INIT OK");
 }
@@ -45,6 +47,12 @@ void setSpeed(int percent) {
     percent = constrain(percent, 0, 100);
 
     // mapowanie na PWM (0–1023)
+    if (percent <= DEADZONE) {
+        int pwm = map(percent, 0, 100, 250, 1023); // 250 minimum for correct motor start, adjust if needed
+        stopMotors(pwm);
+        return;
+    }
+
     int pwm = map(percent, 0, 100, 250, 1023); // 250 minimum for correct motor start, adjust if needed
 
     // kierunek przód
@@ -54,38 +62,43 @@ void setSpeed(int percent) {
     digitalWrite(BIN1, LOW);
     digitalWrite(BIN2, HIGH);
 
+    Serial.print("CMD RECEIVED - SET SPEED(PWM: " + String(pwm) + " ) (PERCENT: " + String(percent) + " )");
+
     ledcWrite(PWM_CHANNEL_A, pwm);
     ledcWrite(PWM_CHANNEL_B, pwm);
-}
-
-void forward() {
-    if (!motorInitDone) {
-        Serial.println("❌ MOTOR NOT INIT YET");
-        return;
-    }
-
-    Serial.println("CMD RECEIVED - FORWARD");
+    return;
+   
     
-    digitalWrite(AIN1, LOW);
-    digitalWrite(AIN2, HIGH);
-
-    digitalWrite(BIN1, LOW);
-    digitalWrite(BIN2, HIGH);
-
-    //soft start
-    for (int speed = 300; speed <= 1000; speed += 100) {
-
-        ledcWrite(PWM_CHANNEL_A, speed);
-        ledcWrite(PWM_CHANNEL_B, speed);
-
-        delay(20); // im większe → bardziej miękkie hamowanie
-    }
-
-    ledcWrite(PWM_CHANNEL_A, 1023); //1023 max
-    ledcWrite(PWM_CHANNEL_B, 1023);
 }
 
-void stopMotors() {
+// void forward() {
+//     if (!motorInitDone) {
+//         Serial.println("❌ MOTOR NOT INIT YET");
+//         return;
+//     }
+
+//     Serial.println("CMD RECEIVED - FORWARD");
+    
+//     digitalWrite(AIN1, LOW);
+//     digitalWrite(AIN2, HIGH);
+
+//     digitalWrite(BIN1, LOW);
+//     digitalWrite(BIN2, HIGH);
+
+//     //soft start
+//     for (int speed = 300; speed <= 1000; speed += 100) {
+
+//         ledcWrite(PWM_CHANNEL_A, speed);
+//         ledcWrite(PWM_CHANNEL_B, speed);
+
+//         delay(20); // im większe → bardziej miękkie hamowanie
+//     }
+
+//     ledcWrite(PWM_CHANNEL_A, 1023); //1023 max
+//     ledcWrite(PWM_CHANNEL_B, 1023);
+// }
+
+void stopMotors(int pwm) {
     if (!motorInitDone) return;
 
     Serial.println("CMD RECEIVED - STOP");
@@ -103,7 +116,7 @@ void stopMotors() {
     */
 
     // 🔥 aktualna prędkość (załóżmy max 1023) SMOOTH BRAKE
-    for (int speed = 500; speed >= 0; speed -= 50) {
+    for (int speed = pwm; speed >= 0; speed -= 20) {
 
         ledcWrite(PWM_CHANNEL_A, speed);
         ledcWrite(PWM_CHANNEL_B, speed);

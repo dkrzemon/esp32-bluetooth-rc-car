@@ -95,7 +95,7 @@ class MyCallbacks : public BLECharacteristicCallbacks {
         // 🛑 STOP
         // =====================
         if (cmd == "S") {
-            stopMotors();
+            stopMotors(0);
             Serial.println("STOP");
             return;
         }

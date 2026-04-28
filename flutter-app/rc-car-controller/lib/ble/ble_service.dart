@@ -26,6 +26,10 @@ class BleService {
 
   late VoidCallback onUpdate;
 
+  String? _lastCmd;
+  int _lastSpeed = -999;
+  DateTime _lastSend = DateTime.fromMillisecondsSinceEpoch(0);
+
   // ================= INIT =================
   void init(VoidCallback update) {
     onUpdate = update;
@@ -35,8 +39,6 @@ class BleService {
 
       for (var r in results) {
         if (r.device.platformName != deviceName) continue;
-
-        print("📡 FOUND RC_CAR");
 
         isBusy = true;
         isConnecting = true;
@@ -53,17 +55,14 @@ class BleService {
         await stateSub?.cancel();
 
         stateSub = device!.connectionState.listen((state) async {
-
           if (state == BluetoothConnectionState.connected) {
             if (isConnected) return;
-
-            print("🟢 CONNECTED");
 
             isConnected = true;
             isConnecting = false;
             onUpdate();
 
-            await Future.delayed(const Duration(milliseconds: 1200));
+            await Future.delayed(const Duration(milliseconds: 800));
 
             await _discover();
 
@@ -71,14 +70,10 @@ class BleService {
             stopReconnect();
 
             isBusy = false;
-
-            print("✅ READY");
           }
 
           if (state == BluetoothConnectionState.disconnected) {
             if (!isConnected) return;
-
-            print("🔴 DISCONNECTED");
 
             isConnected = false;
             isConnecting = false;
@@ -109,21 +104,14 @@ class BleService {
   Future<void> _discover() async {
     if (device == null) return;
 
-    print("=== DISCOVER ===");
+    final services = await device!.discoverServices();
 
-    try {
-      final services = await device!.discoverServices();
-
-      for (var s in services) {
-        for (var c in s.characteristics) {
-          if (c.uuid == charUUID) {
-            characteristic = c;
-            print("✅ CHARACTERISTIC FOUND");
-          }
+    for (var s in services) {
+      for (var c in s.characteristics) {
+        if (c.uuid == charUUID) {
+          characteristic = c;
         }
       }
-    } catch (e) {
-      print("DISCOVER ERROR: $e");
     }
   }
 
@@ -138,13 +126,11 @@ class BleService {
     reconnectTimer = Timer.periodic(
       const Duration(seconds: 5),
       (_) async {
-
         if (isConnected || isBusy || isConnecting) return;
 
         final state = await FlutterBluePlus.adapterState.first;
         if (state != BluetoothAdapterState.on) return;
 
-        print("🔁 RECONNECT SCAN...");
         await scanAndConnect();
       },
     );
@@ -167,12 +153,8 @@ class BleService {
       Permission.location,
     ].request();
 
-    try {
-      await FlutterBluePlus.stopScan();
-      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-    } catch (e) {
-      print("SCAN ERROR: $e");
-    }
+    await FlutterBluePlus.stopScan();
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
 
     Future.delayed(const Duration(seconds: 5), () {
       isScanning = false;
@@ -186,14 +168,11 @@ class BleService {
     heartbeatTimer = Timer.periodic(
       const Duration(seconds: 2),
       (_) async {
-
         if (!isConnected || characteristic == null) return;
 
         try {
           await characteristic!.write("H".codeUnits);
-        } catch (e) {
-          print("HEARTBEAT ERROR: $e");
-        }
+        } catch (_) {}
       },
     );
   }
@@ -202,11 +181,28 @@ class BleService {
   Future<void> sendCommand(String cmd) async {
     if (characteristic == null) return;
 
+    final now = DateTime.now();
+
+    // 🔥 limit 25Hz
+    if (now.difference(_lastSend).inMilliseconds < 40) return;
+
+    _lastSend = now;
+
+    // ignoruj mikro-zmiany
+    if (cmd.startsWith("V")) {
+      final value = int.tryParse(cmd.substring(1)) ?? -1;
+
+      if ((value - _lastSpeed).abs() < 2) return;
+
+      _lastSpeed = value;
+    }
+
+    if (_lastCmd == cmd) return;
+    _lastCmd = cmd;
+
     try {
       await characteristic!.write(cmd.codeUnits);
-    } catch (e) {
-      print("SEND ERROR: $e");
-    }
+    } catch (_) {}
   }
 
   // ================= DISPOSE =================

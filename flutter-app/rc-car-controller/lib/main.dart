@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:async';
 import 'ble/ble_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
   runApp(const MyApp());
 }
 
@@ -27,7 +36,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final BleService ble = BleService();
 
-  double speed = 0; // 0–100
+  double speed = 0;
+  double steer = 0;
+  Timer? _sendTimer;
 
   @override
   void initState() {
@@ -40,70 +51,104 @@ class _HomePageState extends State<HomePage> {
     Future.delayed(const Duration(milliseconds: 500), () {
       ble.scanAndConnect();
     });
+
+    // 🔥 STABILNY STREAM KOMEND (bez lagów)
+    _sendTimer = Timer.periodic(const Duration(milliseconds: 30), (_) {
+      if (!ble.isConnected) return;
+
+      final int v = speed.toInt();
+      ble.sendCommand("V$v");
+    });
   }
 
   @override
   void dispose() {
+    _sendTimer?.cancel();
     ble.dispose();
     super.dispose();
-  }
-
-  void sendSpeed(double value) {
-    int v = value.toInt();
-
-    // 🔥 ograniczenie spamowania BLE (wysyła co 5%)
-    if (v % 5 == 0) {
-      ble.sendCommand("V$v");
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("RC Car Controller")),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              ble.isConnected ? "Connected" : "Not connected",
-              style: const TextStyle(fontSize: 18),
+      appBar: AppBar(
+        backgroundColor: Colors.grey[800],
+        title: const Text("RC Car Controller"),
+      ),
+      body: Row(
+        children: [
+                    Expanded(
+            flex: 1,
+            child: Container(
+              // color: Colors.grey[000],
+              child: Center(
+                child: SizedBox(
+                  height: 250,
+                  width: 250,
+                  child: RotatedBox(
+                    quarterTurns: 3,
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 18,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 23),
+                        activeTrackColor: Colors.blueAccent,
+                        // inactiveTrackColor: Colors.grey.shade700,
+                      ),
+                      child: RotatedBox(
+                        quarterTurns: 3,
+                        child: Slider(
+                          value: steer,
+                          min: 0,
+                          max: 100,
+                          onChanged: (value) {
+                            setState(() {
+                              steer = value;
+                            });
+                          }
+                        ),
+                      ),
+                    )
+                  )
+                )
+              ),
             ),
-
-            const SizedBox(height: 30),
-
-            Text(
-              "Speed: ${speed.toInt()}%",
-              style: const TextStyle(fontSize: 20),
+          ),
+          Expanded(
+            flex: 1,
+            child: Container(
+              color: Colors.grey[900],
+              child: Center(
+                child: SizedBox(
+                  height: 250,
+                  child: RotatedBox(
+                    quarterTurns: 3,
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 18,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 23),
+                        activeTrackColor: Colors.blueAccent,
+                        // inactiveTrackColor: Colors.grey.shade700,
+                      ),
+                      child: RotatedBox(
+                        quarterTurns: 0,
+                        child: Slider(
+                          value: speed,
+                          min: 0,
+                          max: 100,
+                          onChanged: (value) {
+                            setState(() {
+                              speed = value;
+                            });
+                          }
+                        ),
+                      ),
+                    )
+                  )
+                )
+              ),
             ),
-
-            Slider(
-              value: speed,
-              min: 0,
-              max: 100,
-              divisions: 100,
-
-              onChanged: (value) {
-                setState(() {
-                  speed = value;
-                });
-
-                sendSpeed(value);
-              },
-            ),
-
-            const SizedBox(height: 20),
-
-            ElevatedButton(
-              onPressed: () {
-                speed = 0;
-                setState(() {});
-                ble.sendCommand("S");
-              },
-              child: const Text("STOP"),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
