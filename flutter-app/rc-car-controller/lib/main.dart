@@ -36,9 +36,14 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final BleService ble = BleService();
 
+  int lastSentSpeed = 0;
+
   double speed = 0;
   double steer = 0;
+
   Timer? _sendTimer;
+
+  bool isBackward = false;
 
   @override
   void initState() {
@@ -57,7 +62,12 @@ class _HomePageState extends State<HomePage> {
       if (!ble.isConnected) return;
 
       final int v = speed.toInt();
-      ble.sendCommand("V$v");
+      final int output = isBackward ? -v : v;
+      if (output != lastSentSpeed) {
+        debugPrint("Sending command: V$output");
+        ble.sendCommand("V$output");
+        lastSentSpeed = output;
+      }
     });
   }
 
@@ -73,78 +83,118 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.grey[800],
+        foregroundColor: Colors.white,
         title: const Text("RC Car Controller"),
       ),
       body: Row(
         children: [
-                    Expanded(
-            flex: 1,
+          // 🔹 1. STEERING (left column)
+          Expanded(
+            flex: 3,
             child: Container(
-              // color: Colors.grey[000],
+              color: Colors.grey[850],
               child: Center(
-                child: SizedBox(
-                  height: 250,
-                  width: 250,
-                  child: RotatedBox(
-                    quarterTurns: 3,
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 18,
-                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 23),
-                        activeTrackColor: Colors.blueAccent,
-                        // inactiveTrackColor: Colors.grey.shade700,
+                child: RotatedBox(
+                  quarterTurns: 0,
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 18,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 23,
                       ),
-                      child: RotatedBox(
-                        quarterTurns: 3,
-                        child: Slider(
-                          value: steer,
-                          min: 0,
-                          max: 100,
-                          onChanged: (value) {
-                            setState(() {
-                              steer = value;
-                            });
-                          }
-                        ),
-                      ),
-                    )
-                  )
-                )
+                      activeTrackColor: Colors.blueAccent,
+                    ),
+                    child: Slider(
+                      value: steer,
+                      min: 0,
+                      max: 100,
+                      onChanged: (value) {
+                        setState(() {
+                          steer = value;
+                        });
+                      },
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
+  
+          // 🔹 2. VELOCITY (mid column)
           Expanded(
-            flex: 1,
+            flex: 3,
             child: Container(
               color: Colors.grey[900],
               child: Center(
-                child: SizedBox(
-                  height: 250,
-                  child: RotatedBox(
-                    quarterTurns: 3,
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 18,
-                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 23),
-                        activeTrackColor: Colors.blueAccent,
-                        // inactiveTrackColor: Colors.grey.shade700,
+                child: RotatedBox(
+                  quarterTurns: 3,
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 18,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 23,
                       ),
-                      child: RotatedBox(
-                        quarterTurns: 0,
-                        child: Slider(
-                          value: speed,
-                          min: 0,
-                          max: 100,
-                          onChanged: (value) {
-                            setState(() {
-                              speed = value;
-                            });
-                          }
-                        ),
-                      ),
-                    )
-                  )
-                )
+                      activeTrackColor: Colors.blueAccent,
+                    ),
+                    child: Slider(
+                      value: speed,
+                      min: 0,
+                      max: 100,
+                      onChanged: (value) {
+                        setState(() {
+                          speed = value;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+  
+          // 🔹 3. BUTTONS (right column)
+          Expanded(
+            flex: 1,
+            child: Container(
+              color: Colors.grey[700],
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                      backgroundColor: isBackward ? Colors.orange : Colors.red,
+                      foregroundColor: isBackward ? Colors.black : Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+                      fixedSize: const Size(110, 60),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        isBackward = !isBackward;
+                      });
+                    },
+                    child: Text(
+                      isBackward ? "REVERSE" : "FORWARD",
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      // backgroundColor: isBackward ? Colors.orange : Colors.red,
+                      // foregroundColor: isBackward ? Colors.black : Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+                      fixedSize: const Size(110, 60),
+                    ),
+                    onPressed: () {},
+                    child: const Text("Button 2"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {},
+                    child: const Text("Button 3"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {},
+                    child: const Text("Button 4"),
+                  ),
+                ],
               ),
             ),
           ),

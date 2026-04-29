@@ -62,32 +62,17 @@ class MyCallbacks : public BLECharacteristicCallbacks {
         }
 
         // =====================
-        // 🚗 SPEED (V0–V100)
+        // 🚗 SPEED (V-100–V100)
         // =====================
         if (cmd.startsWith("V")) {
-        
             // 🔥 sprawdź czy reszta to liczba
             String numStr = cmd.substring(1);
-        
-            for (int i = 0; i < numStr.length(); i++) {
-                if (!isDigit(numStr[i])) {
-                    Serial.println("❌ INVALID SPEED DATA");
-                    return;
-                }
-            }
-        
+
             int value = numStr.toInt();
-        
-            // 🔥 zakres bezpieczeństwa
-            if (value < 0 || value > 100) {
-                Serial.println("❌ SPEED OUT OF RANGE");
-                return;
-            }
-        
-            Serial.print("SPEED: ");
-            Serial.println(value);
-        
+            Serial.println("value = " + String(value));
+            
             setSpeed(value);
+        
             return;
         }
 
