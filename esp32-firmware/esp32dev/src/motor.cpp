@@ -15,7 +15,7 @@
 #define PWM_CHANNEL_A 0
 #define PWM_CHANNEL_B 1
 #define PWM_FREQ 15000 // frequency for PWM, you can adjust this value based on your needs
-#define PWM_RES 10 // 10-bit resolution: duty cycle can be from 0 to 1023
+#define PWM_RES 8 // 10-bit resolution: duty cycle can be from 0 to 1023
 
 static bool motorInitDone = false;
 
@@ -41,7 +41,11 @@ void setupMotors() {
 void setSpeed(int percent) {
     if (!motorInitDone) return;
 
-    if(percent > 0){
+    Serial.println();
+    Serial.println("Percent: " + String(percent));
+    Serial.println("setSpeed - START");
+
+    if(percent > 10){
         // kierunek przód
         digitalWrite(AIN1, LOW);
         digitalWrite(AIN2, HIGH);
@@ -49,7 +53,7 @@ void setSpeed(int percent) {
         digitalWrite(BIN1, LOW);
         digitalWrite(BIN2, HIGH);
     } 
-    else if (percent < 0) {
+    else if (percent < -10) {
         // kierunek tył
         digitalWrite(AIN1, HIGH);
         digitalWrite(AIN2, LOW);
@@ -59,26 +63,32 @@ void setSpeed(int percent) {
     }
      else {
         // STOP
-        stopMotors(0);
+        ledcWrite(PWM_CHANNEL_A, 0);
+        ledcWrite(PWM_CHANNEL_B, 0);
+
+        digitalWrite(AIN1, HIGH);
+        digitalWrite(AIN2, HIGH);
+        digitalWrite(BIN1, HIGH);
+        digitalWrite(BIN2, HIGH);
+
+        Serial.println("setSpeed - STOP - in else");
+        Serial.println();
+
         return;
     }
 
     // 🔥 PRĘDKOŚĆ (BEZ ZNAKU)
-    int velocity = abs(percent);
-    velocity = constrain(velocity, 0, 100);
+    int velocity = abs(percent); // change velocity to absolute value (remove sign)
+    velocity = constrain(velocity, 0, 100); // change velocity range to 0-100 (if is out of range)
     Serial.println("CONSTRAINED VELOCITY: " + String(velocity));
 
-    // 🔥 DEADZONE
-    if (velocity <= 5) {
-        stopMotors(0);
-        return;
-    }
-
-    int pwm = map(velocity, 0, 100, 250, 1023); // 250 minimum for correct motor start, adjust if needed
+    int pwm = map(velocity, 0, 100, 60, 255); // for 10 bit - 250 minimum for correct motor start, adjust if needed / for 8 bit - 30 minimum
     Serial.println("PWM: " + String(pwm));
 
     ledcWrite(PWM_CHANNEL_A, pwm);
     ledcWrite(PWM_CHANNEL_B, pwm);
+
+    Serial.println("setSpeed - STOP");
 
     return;
 }
@@ -86,7 +96,20 @@ void setSpeed(int percent) {
 void stopMotors(int pwm) {
     if (!motorInitDone) return;
 
-    Serial.println("CMD RECEIVED - STOP");
+    Serial.println();
+    Serial.println("stopMotors - START");
+    Serial.println("PWM: " + String(pwm));
+
+    int velocity = abs(pwm);
+
+    // 🔥 velocity = aktualna prędkość (dla 10 bitow max 1023) SMOOTH BRAKE
+    for (pwm; pwm >= 0; pwm -= 2) {
+
+        ledcWrite(PWM_CHANNEL_A, pwm);
+        ledcWrite(PWM_CHANNEL_B, pwm);
+
+        delay(20); // im większe → bardziej miękkie hamowanie
+    }
 
     // 🔴 na końcu aktywne hamowanie (żeby nie toczył się dalej)
     digitalWrite(AIN1, HIGH);
@@ -97,4 +120,9 @@ void stopMotors(int pwm) {
 
     ledcWrite(PWM_CHANNEL_A, 0);
     ledcWrite(PWM_CHANNEL_B, 0);
+
+    Serial.println("stopMotors - STOP ");
+    Serial.println();
+
+    return;
 }

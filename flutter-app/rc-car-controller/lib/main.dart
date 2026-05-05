@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'ble/ble_service.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterBluePlus.setLogLevel(LogLevel.none);
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
@@ -37,8 +40,9 @@ class _HomePageState extends State<HomePage> {
   final BleService ble = BleService();
 
   int lastSentSpeed = 0;
+  int speed = 0;
 
-  double speed = 0;
+  double sliderValue = 0;
   double steer = 0;
 
   Timer? _sendTimer;
@@ -61,13 +65,18 @@ class _HomePageState extends State<HomePage> {
     _sendTimer = Timer.periodic(const Duration(milliseconds: 30), (_) {
       if (!ble.isConnected) return;
 
-      final int v = speed.toInt();
+      // final int v = speed.toInt();
+      final int v = speed;
       final int output = isBackward ? -v : v;
+
       if (output != lastSentSpeed) {
-        debugPrint("Sending command: V$output");
+        debugPrint("");
+        debugPrint("---------------------Sending command (init): V$output");
+
         ble.sendCommand("V$output");
         lastSentSpeed = output;
       }
+
     });
   }
 
@@ -106,11 +115,19 @@ class _HomePageState extends State<HomePage> {
                     ),
                     child: Slider(
                       value: steer,
-                      min: 0,
+                      min: -100,
                       max: 100,
+                      divisions: 200,
+
                       onChanged: (value) {
                         setState(() {
                           steer = value;
+                        });
+                      },
+
+                      onChangeEnd: (value) {
+                        setState(() {
+                          steer = 0; // 🔥 WRACA DO ŚRODKA
                         });
                       },
                     ),
@@ -137,13 +154,29 @@ class _HomePageState extends State<HomePage> {
                       activeTrackColor: Colors.blueAccent,
                     ),
                     child: Slider(
-                      value: speed,
+                      value: sliderValue,
                       min: 0,
                       max: 100,
                       onChanged: (value) {
                         setState(() {
-                          speed = value;
+                          sliderValue = value;
+                          speed = sliderValue.toInt();
+                          
                         });
+                        debugPrint("");
+                        debugPrint("Sending ONCHANGED: V$speed");
+                      },
+
+                      onChangeEnd: (value) {
+                        setState(() {
+                          sliderValue = 0;
+                          speed = 0;
+                          lastSentSpeed = 0;
+                        });
+
+                        debugPrint("");
+                        debugPrint("Sending drop: V$speed");
+                        ble.sendCommand("V$speed");
                       },
                     ),
                   ),

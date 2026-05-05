@@ -181,12 +181,14 @@ class BleService {
   Future<void> sendCommand(String cmd) async {
     if (characteristic == null) return;
 
-    final now = DateTime.now();
+    if(cmd != "V0"){
+      final now = DateTime.now();
 
-    // 🔥 limit 25Hz
-    if (now.difference(_lastSend).inMilliseconds < 40) return;
+      // 🔥 limit 25Hz
+      if (now.difference(_lastSend).inMilliseconds < 40) return;
 
-    _lastSend = now;
+      _lastSend = now;
+    }
 
     // ignoruj mikro-zmiany
     if (cmd.startsWith("V")) {

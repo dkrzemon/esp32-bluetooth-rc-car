@@ -47,6 +47,7 @@ class MyCallbacks : public BLECharacteristicCallbacks {
         
         // 🔥 bezpieczne kopiowanie
         String cmd = String(raw.data(), raw.length());
+        Serial.println("----------------------onWrite - RAW CMD: " + cmd);
         cmd.trim();
         
         // 🔥 ignoruj śmieci (np. dziwne znaki)
@@ -69,19 +70,11 @@ class MyCallbacks : public BLECharacteristicCallbacks {
             String numStr = cmd.substring(1);
 
             int value = numStr.toInt();
+            Serial.println();
             Serial.println("value = " + String(value));
             
             setSpeed(value);
         
-            return;
-        }
-
-        // =====================
-        // 🛑 STOP
-        // =====================
-        if (cmd == "S") {
-            stopMotors(0);
-            Serial.println("STOP");
             return;
         }
 
