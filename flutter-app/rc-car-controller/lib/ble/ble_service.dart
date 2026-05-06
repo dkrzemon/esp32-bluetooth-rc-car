@@ -32,6 +32,8 @@ class BleService {
 
   // ================= INIT =================
   void init(VoidCallback update) {
+    FlutterBluePlus.stopScan().catchError((_) {});
+
     onUpdate = update;
 
     scanSub = FlutterBluePlus.scanResults.listen((results) async {
@@ -39,6 +41,8 @@ class BleService {
 
       for (var r in results) {
         if (r.device.platformName != deviceName) continue;
+
+        if (isConnecting || isBusy || isConnected) return;
 
         isBusy = true;
         isConnecting = true;
@@ -49,6 +53,7 @@ class BleService {
         device = r.device;
 
         try {
+          await Future.delayed(const Duration(milliseconds: 200)); // 🔥 stabilizacja
           await device!.connect(timeout: const Duration(seconds: 10));
         } catch (_) {}
 
@@ -92,11 +97,9 @@ class BleService {
             });
           }
         });
-
         return;
       }
     });
-
     startReconnect();
   }
 
@@ -108,11 +111,8 @@ class BleService {
 
     for (var s in services) {
       for (var c in s.characteristics) {
-        debugPrint("UUID: ${c.uuid}");
-        debugPrint("write: ${c.properties.write}");
-        debugPrint("writeWithoutResponse: ${c.properties.writeWithoutResponse}");
-        
         if (c.uuid == charUUID) {
+          debugPrint("UUID: ${c.uuid} write: ${c.properties.write} writeWithoutResponse: ${c.properties.writeWithoutResponse}");
           characteristic = c;
         }
       }
@@ -147,7 +147,7 @@ class BleService {
 
   // ================= SCAN =================
   Future<void> scanAndConnect() async {
-    if (isScanning) return;
+    if (isScanning || isBusy || isConnecting || isConnected) return;
 
     isScanning = true;
 
