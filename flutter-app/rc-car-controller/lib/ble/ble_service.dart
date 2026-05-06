@@ -26,10 +26,6 @@ class BleService {
 
   late VoidCallback onUpdate;
 
-  String? _lastCmd;
-  int _lastSpeed = -999;
-  DateTime _lastSend = DateTime.fromMillisecondsSinceEpoch(0);
-
   // ================= INIT =================
   void init(VoidCallback update) {
     FlutterBluePlus.stopScan().catchError((_) {});
@@ -175,46 +171,23 @@ class BleService {
         if (!isConnected || characteristic == null) return;
 
         try {
-          await characteristic!.write(
-            "H".codeUnits,
-            withoutResponse: true,
-          );
+          await characteristic!.write([0x01], withoutResponse: true);
         } catch (_) {}
       },
     );
   }
 
-  // ================= SEND =================
-  Future<void> sendCommand(String cmd) async {
+  Future<void> sendPacket(int speed, int steer) async {
     if (characteristic == null) return;
 
-    if(cmd != "V0"){
-      final now = DateTime.now();
+    final List<int> packet = [
+      0xA5,
+      speed + 100,
+      steer + 100,
+      (speed ^ steer) & 0xFF
+    ];
 
-      // 🔥 limit 25Hz
-      if (now.difference(_lastSend).inMilliseconds < 40) return;
-
-      _lastSend = now;
-    }
-
-    // ignoruj mikro-zmiany
-    if (cmd.startsWith("V")) {
-      final value = int.tryParse(cmd.substring(1)) ?? -1;
-
-      if ((value - _lastSpeed).abs() < 2) return;
-
-      _lastSpeed = value;
-    }
-
-    if (_lastCmd == cmd) return;
-    _lastCmd = cmd;
-
-    try {
-      await characteristic!.write(
-        cmd.codeUnits, 
-        withoutResponse: true
-      );
-    } catch (_) {}
+    await characteristic!.write(packet, withoutResponse: true);
   }
 
   // ================= DISPOSE =================

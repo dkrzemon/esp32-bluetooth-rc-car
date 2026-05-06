@@ -1,6 +1,5 @@
 #include "ble_server.h"
 #include <Arduino.h>
-
 #include "motor.h"
 
 #define SERVICE_UUID        "12345678-1234-1234-1234-1234abcd5678"
@@ -37,52 +36,66 @@ class ServerCallbacks : public BLEServerCallbacks {
 };
 
 // =====================
-// 🔥 CHARACTERISTIC CALLBACKS (FIXED)
+// 🔥 PARSE PACKET
+// =====================
+int speed = 0;
+int steer = 0;
+
+void parsePacket(uint8_t *data, int len) {
+    if (len < 4) return;
+    if (data[0] != 0xA5) return;
+
+    int v = data[1] - 100;
+    int s = data[2] - 100;
+    int checksum = data[3];
+
+    if (((v ^ s) & 0xFF) != checksum) {
+        Serial.println("❌ BAD CHECKSUM");
+        return;
+    }
+
+    speed = v;
+    steer = s;
+
+    Serial.print("V=");
+    Serial.println(speed);
+
+    Serial.print("S=");
+    Serial.println(steer);
+
+    setSpeed(speed, steer);
+}
+
+// =====================
+// 🔥 CHARACTERISTIC CALLBACKS
 // =====================
 class MyCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *characteristic) override {
-        
-        std::string raw = characteristic->getValue();
-        if (raw.empty()) return;
-        
-        // 🔥 bezpieczne kopiowanie
-        String cmd = String(raw.data(), raw.length());
-        Serial.println("----------------------onWrite - RAW CMD: " + cmd);
-        cmd.trim();
-        
-        // 🔥 ignoruj śmieci (np. dziwne znaki)
-        if (cmd.length() == 0 || cmd.length() > 10) return;
-        
-        // =====================
-        // 💓 HEARTBEAT
-        // =====================
-        if (cmd == "H") {
+
+        std::string value = characteristic->getValue();
+        if (value.empty()) return;
+
+        uint8_t *data = (uint8_t*)value.data();
+        int len = value.length();
+
+        // ================= HEARTBEAT =================
+        if (len == 1 && data[0] == 0x01) {
             lastHeartbeat = millis();
             Serial.println("💓 HEARTBEAT");
             return;
         }
 
-        // =====================
-        // 🚗 SPEED (V-100–V100)
-        // =====================
-        if (cmd.startsWith("V")) {
-            // 🔥 sprawdź czy reszta to liczba
-            String numStr = cmd.substring(1);
+        // ================= DEBUG =================
+        Serial.println("---------------- RAW PACKET ----------------");
 
-            int value = numStr.toInt();
-            Serial.println();
-            Serial.println("value = " + String(value));
-            
-            setSpeed(value);
-        
-            return;
+        for (int i = 0; i < len; i++) {
+            Serial.print(data[i]);
+            Serial.print(" ");
         }
+        Serial.println();
 
-        // =====================
-        // ❌ NIEZNANA KOMENDA
-        // =====================
-        Serial.print("❌ UNKNOWN CMD: ");
-        Serial.println(cmd);
+        // ================= COMMAND =================
+        parsePacket(data, len);
     }
 };
 
@@ -118,7 +131,6 @@ void BLEManager::begin() {
 
     Serial.println("=== NEW FW BUILD ===");
     Serial.println(CHARACTERISTIC_UUID);
-
     Serial.println("BLE READY");
 }
 
@@ -132,7 +144,7 @@ void BLEManager::loop() {
         return;
     }
 
-    // 🔥 grace period (po connect)
+    // 🔥 grace period
     if (millis() - connectTime < 5000) {
         return;
     }
@@ -140,7 +152,6 @@ void BLEManager::loop() {
     // 🔥 HEARTBEAT TIMEOUT
     if (millis() - lastHeartbeat > 3000) {
         Serial.println("💀 HEARTBEAT LOST → FORCE DISCONNECT");
-
         pServer->disconnect(pServer->getConnId());
     }
 

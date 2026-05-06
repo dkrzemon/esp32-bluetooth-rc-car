@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "motor.h"
 
-// ===== PINY TB6612FNG =====
+// ===== PINS TB6612FNG =====
 // left wheel
 #define AIN1 17
 #define AIN2 16
@@ -38,11 +38,12 @@ void setupMotors() {
     Serial.println("MOTORS INIT OK");
 }
 
-void setSpeed(int percent) {
+void setSpeed(int percent, int steer) {
     if (!motorInitDone) return;
 
     Serial.println();
-    Serial.println("Percent: " + String(percent));
+    // Serial.println("Percent: " + String(percent));
+    // Serial.println("Steer: " + String(steer));  
     Serial.println("setSpeed - START");
 
     if(percent > 10){

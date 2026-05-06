@@ -40,10 +40,12 @@ class _HomePageState extends State<HomePage> {
   final BleService ble = BleService();
 
   int lastSentSpeed = 0;
+  int lastSentSteer = 0;
   int speed = 0;
+  int steer = 0;
 
-  double sliderValue = 0;
-  double steer = 0;
+  double sliderValueSpeed = 0;
+  double sliderValueSteer = 0;
 
   Timer? _sendTimer;
 
@@ -61,22 +63,22 @@ class _HomePageState extends State<HomePage> {
       ble.scanAndConnect();
     });
 
-    // 🔥 STABILNY STREAM KOMEND (bez lagów)
+    // ==============================
+    // 🔥 BINARY PROTOCOL SEND
+    // ==============================
     _sendTimer = Timer.periodic(const Duration(milliseconds: 30), (_) {
       if (!ble.isConnected) return;
 
-      // final int v = speed.toInt();
-      final int v = speed;
-      final int output = isBackward ? -v : v;
+      final int v = isBackward ? -speed : speed;
+      final int s = steer;
 
-      if (output != lastSentSpeed) {
-        debugPrint("");
-        debugPrint("---------------------Sending command (init): V$output");
+      if (v == lastSentSpeed && s == lastSentSteer) return;
 
-        ble.sendCommand("V$output");
-        lastSentSpeed = output;
-      }
+      debugPrint("Sending V$v S$s");
 
+      ble.sendPacket(v, s);
+      lastSentSpeed = v;
+      lastSentSteer = s;
     });
   }
 
@@ -95,7 +97,7 @@ class _HomePageState extends State<HomePage> {
         foregroundColor: Colors.white,
         title: const Text("RC Car Controller"),
       ),
-      body: Row(
+            body: Row(
         children: [
           // 🔹 1. STEERING (left column)
           Expanded(
@@ -114,20 +116,20 @@ class _HomePageState extends State<HomePage> {
                       activeTrackColor: Colors.blueAccent,
                     ),
                     child: Slider(
-                      value: steer,
+                      value: sliderValueSteer,
                       min: -100,
                       max: 100,
                       divisions: 200,
-
                       onChanged: (value) {
                         setState(() {
-                          steer = value;
+                          sliderValueSteer = value;
+                          steer = value.toInt();
                         });
                       },
-
                       onChangeEnd: (value) {
                         setState(() {
-                          steer = 0; // 🔥 WRACA DO ŚRODKA
+                          sliderValueSteer = 0; // 🔥 WRACA DO ŚRODKA
+                          steer = 0;
                         });
                       },
                     ),
@@ -154,29 +156,24 @@ class _HomePageState extends State<HomePage> {
                       activeTrackColor: Colors.blueAccent,
                     ),
                     child: Slider(
-                      value: sliderValue,
+                      value: sliderValueSpeed,
                       min: 0,
                       max: 100,
                       onChanged: (value) {
                         setState(() {
-                          sliderValue = value;
-                          speed = sliderValue.toInt();
-                          
+                          sliderValueSpeed = value;
+                          speed = value.toInt();
                         });
-                        debugPrint("");
-                        debugPrint("Sending ONCHANGED: V$speed");
                       },
-
                       onChangeEnd: (value) {
                         setState(() {
-                          sliderValue = 0;
+                          sliderValueSpeed = 0;
                           speed = 0;
                           lastSentSpeed = 0;
                         });
-
-                        debugPrint("");
-                        debugPrint("Sending drop: V$speed");
-                        ble.sendCommand("V$speed");
+                        debugPrint("STOP - sending V0 S$steer");
+                        ble.sendPacket(isBackward ? 0 : 0, steer); // albo sam STOP
+                        lastSentSpeed = 0;
                       },
                     ),
                   ),
