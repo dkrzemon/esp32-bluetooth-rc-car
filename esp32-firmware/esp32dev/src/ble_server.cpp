@@ -116,6 +116,9 @@ void BLEManager::begin() {
 
     BLEDevice::startAdvertising();
 
+    Serial.println("=== NEW FW BUILD ===");
+    Serial.println(CHARACTERISTIC_UUID);
+
     Serial.println("BLE READY");
 }
 

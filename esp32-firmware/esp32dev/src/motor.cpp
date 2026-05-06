@@ -63,13 +63,7 @@ void setSpeed(int percent) {
     }
      else {
         // STOP
-        ledcWrite(PWM_CHANNEL_A, 0);
-        ledcWrite(PWM_CHANNEL_B, 0);
-
-        digitalWrite(AIN1, HIGH);
-        digitalWrite(AIN2, HIGH);
-        digitalWrite(BIN1, HIGH);
-        digitalWrite(BIN2, HIGH);
+        stopMotors(0);
 
         Serial.println("setSpeed - STOP - in else");
         Serial.println();
@@ -93,23 +87,11 @@ void setSpeed(int percent) {
     return;
 }
 
-void stopMotors(int pwm) {
+void stopMotors(int pwm) { // pwm for future smooth breake
     if (!motorInitDone) return;
 
     Serial.println();
     Serial.println("stopMotors - START");
-    Serial.println("PWM: " + String(pwm));
-
-    int velocity = abs(pwm);
-
-    // 🔥 velocity = aktualna prędkość (dla 10 bitow max 1023) SMOOTH BRAKE
-    for (pwm; pwm >= 0; pwm -= 2) {
-
-        ledcWrite(PWM_CHANNEL_A, pwm);
-        ledcWrite(PWM_CHANNEL_B, pwm);
-
-        delay(20); // im większe → bardziej miękkie hamowanie
-    }
 
     // 🔴 na końcu aktywne hamowanie (żeby nie toczył się dalej)
     digitalWrite(AIN1, HIGH);

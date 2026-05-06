@@ -19,7 +19,7 @@ class BleService {
   final String deviceName = "RC_CAR";
 
   final Guid charUUID =
-      Guid("12345678-1234-1234-1234-123456789abd");
+      Guid("abcd1234-5678-1234-5678-abcdef123456");
 
   StreamSubscription<List<ScanResult>>? scanSub;
   StreamSubscription<BluetoothConnectionState>? stateSub;
@@ -108,6 +108,10 @@ class BleService {
 
     for (var s in services) {
       for (var c in s.characteristics) {
+        debugPrint("UUID: ${c.uuid}");
+        debugPrint("write: ${c.properties.write}");
+        debugPrint("writeWithoutResponse: ${c.properties.writeWithoutResponse}");
+        
         if (c.uuid == charUUID) {
           characteristic = c;
         }
@@ -171,7 +175,10 @@ class BleService {
         if (!isConnected || characteristic == null) return;
 
         try {
-          await characteristic!.write("H".codeUnits);
+          await characteristic!.write(
+            "H".codeUnits,
+            withoutResponse: true,
+          );
         } catch (_) {}
       },
     );
@@ -203,7 +210,10 @@ class BleService {
     _lastCmd = cmd;
 
     try {
-      await characteristic!.write(cmd.codeUnits);
+      await characteristic!.write(
+        cmd.codeUnits, 
+        withoutResponse: true
+      );
     } catch (_) {}
   }
 
